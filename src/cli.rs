@@ -2,6 +2,8 @@ use anyhow::Result;
 use clap::{ArgAction, Parser, Subcommand};
 use inquire::Confirm;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::hash::Hash;
 use std::io::Read;
 use std::io::Write;
 use std::path::PathBuf;
@@ -70,7 +72,7 @@ pub fn run() -> Result<()> {
 }
 
 /// Binary Metadata Object
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct HoistedBinary {
     /// The binary name
     pub name: String,
@@ -90,11 +92,18 @@ impl HoistedBinary {
 /// The global hoist registry is stored in ~/.hoist/registry.toml
 /// and contains the memoized list of binaries that have been
 /// built with cargo and saved as [HoistedBinary] objects.
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct HoistRegistry {
     /// The list of hoisted binaries.
-    pub binaries: Vec<HoistedBinary>,
+    #[serde(default, skip_serializing_if = "HashSet::is_empty")]
+    pub binaries: HashSet<HoistedBinary>,
 }
+//
+// impl From<Vec<HoistedBinary>> for HoistRegistry {
+//     fn from(binaries: Vec<HoistedBinary>) -> Self {
+//         HoistRegistry { binaries }
+//     }
+// }
 
 impl HoistRegistry {
     /// The path to the hoist directory.
@@ -191,9 +200,34 @@ impl HoistRegistry {
         let mut registry: HoistRegistry = toml::from_str(&registry_toml)?;
 
         // Then we iterate over the binaries and add them to the registry.
-        let binaries = binaries.unwrap_or_default();
+        let binaries = match binaries {
+            Some(b) => b,
+            None => {
+                // Try to read all binaries in the target directory.
+                let mut binaries = vec![];
+                let target_dir = std::env::current_dir()?.join("target/release/");
+                for entry in std::fs::read_dir(target_dir)? {
+                    let entry = entry?;
+                    let path = entry.path();
+                    let bin_file_name = path
+                        .file_name()
+                        .ok_or(anyhow::anyhow!("[std] failed to extract binary name"))?;
+                    let binary_name = bin_file_name
+                        .to_str()
+                        .ok_or(anyhow::anyhow!(
+                            "[std] failed to convert binary path name to string"
+                        ))?
+                        .to_string();
+                    binaries.push(binary_name);
+                }
+                binaries
+            }
+        };
+
         for binary in binaries {
-            let binary_path = std::env::current_dir()?.join("target/debug/").join(binary);
+            let binary_path = std::env::current_dir()?
+                .join("target/release/")
+                .join(binary);
             let binary_path = binary_path.canonicalize()?;
             let bin_file_name = binary_path
                 .file_name()
@@ -205,7 +239,7 @@ impl HoistRegistry {
                 ))?
                 .to_string();
             let binary = HoistedBinary::new(binary_name, binary_path);
-            registry.binaries.push(binary);
+            registry.binaries.insert(binary);
         }
 
         // Then we write the registry back to the registry file.
@@ -308,13 +342,16 @@ pub fn init_tracing_subscriber(verbosity_level: u8) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
+    #[serial]
     fn test_setup() {
         // Create a tempdir and set it as the current working directory
         let tempdir = tempfile::tempdir().unwrap();
-        let test_tempdir = tempdir.path().join("test_install");
+        let test_tempdir = tempdir.path().join("test_setup");
         std::fs::create_dir(&test_tempdir).unwrap();
+        std::env::set_current_dir(&test_tempdir).unwrap();
 
         // Create the ~/.bashrc file.
         let bash_file = test_tempdir.join(".bashrc");
@@ -328,16 +365,10 @@ mod tests {
         // Install the hoist registry.
         HoistRegistry::setup().unwrap();
 
-        // Verify that the ~/.hoist/ directory exists.
         let hoist_dir = HoistRegistry::dir().unwrap();
         assert!(std::path::Path::new(&hoist_dir).exists());
-
-        // Verify that the ~/.hoist/registry.toml file exists.
         let registry_file = HoistRegistry::path().unwrap();
         assert!(std::path::Path::new(&registry_file).exists());
-
-        // Verify that the ~/.hoist/registry.toml file contains
-        // the default registry.
         let mut file = std::fs::OpenOptions::new()
             .read(true)
             .open(registry_file)
@@ -346,12 +377,8 @@ mod tests {
         file.read_to_string(&mut registry_toml).unwrap();
         let registry: HoistRegistry = toml::from_str(&registry_toml).unwrap();
         assert_eq!(registry, HoistRegistry::default());
-
-        // Verify that the ~/.hoist/hook file exists.
         let hook_file = HoistRegistry::hook_identifier().unwrap();
         assert!(std::path::Path::new(&hook_file).exists());
-
-        // Verify that the hoist pre-hook was written to the ~/.bashrc file.
         let mut file = std::fs::OpenOptions::new()
             .read(true)
             .open(bash_file)
@@ -359,6 +386,55 @@ mod tests {
         let mut bash_file_contents = String::new();
         file.read_to_string(&mut bash_file_contents).unwrap();
         assert_eq!(bash_file_contents, INSTALL_BASH_FUNCTION);
+
+        // Restore the original HOME directory.
+        std::env::set_var("HOME", original_home);
+    }
+
+    #[test]
+    #[serial]
+    fn test_install() {
+        // Populate the temporary directory.
+        let tempdir = tempfile::tempdir().unwrap();
+        let test_tempdir = tempdir.path().join("test_install");
+        std::fs::create_dir(&test_tempdir).unwrap();
+        std::env::set_current_dir(&test_tempdir).unwrap();
+        let bash_file = test_tempdir.join(".bashrc");
+        std::fs::File::create(&bash_file).unwrap();
+        let target_dir = test_tempdir.join("target/release/");
+        std::fs::create_dir_all(&target_dir).unwrap();
+        let binary1 = target_dir.join("binary1");
+        std::fs::File::create(&binary1).unwrap();
+        let binary2 = target_dir.join("binary2");
+        std::fs::File::create(&binary2).unwrap();
+        let original_home = std::env::var_os("HOME").unwrap();
+        std::env::set_var("HOME", test_tempdir);
+
+        HoistRegistry::install(None).unwrap();
+
+        let registry_file = HoistRegistry::path().unwrap();
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(registry_file)
+            .unwrap();
+        let mut registry_toml = String::new();
+        file.read_to_string(&mut registry_toml).unwrap();
+        let registry: HoistRegistry = toml::from_str(&registry_toml).unwrap();
+        assert_eq!(
+            registry,
+            HoistRegistry {
+                binaries: HashSet::from([
+                    HoistedBinary::new(
+                        "binary1".to_string(),
+                        target_dir.join("binary1").canonicalize().unwrap()
+                    ),
+                    HoistedBinary::new(
+                        "binary2".to_string(),
+                        target_dir.join("binary2").canonicalize().unwrap()
+                    ),
+                ])
+            }
+        );
 
         // Restore the original HOME directory.
         std::env::set_var("HOME", original_home);
