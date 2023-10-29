@@ -1,0 +1,36 @@
+[package]
+name = "cargo-hoist"
+description = "Dead simple, memoized cargo subcommand to hoist cargo-built binaries into the current working directory."
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+authors = ["refcell"]
+repository = "https://github.com/refcell/cargo-hoist"
+homepage = "https://github.com/refcell/cargo-hoist"
+exclude = ["tests"]
+
+[[bin]]
+name = "cargo-hoist"
+path = "src/main.rs"
+
+[[bin]]
+name = "cargo-h"
+path = "src/../src/main.rs"
+test = false
+bench = false
+
+[profile.release]
+lto = "thin"
+
+[dependencies]
+anyhow = "1.0"
+inquire = "0.6"
+tracing = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_derive = "1"
+toml = "0.8"
+tracing-subscriber = "0.3"
+clap = { version = "4.4", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.8"
