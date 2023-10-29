@@ -351,6 +351,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let test_tempdir = tempdir.path().join("test_setup");
         std::fs::create_dir(&test_tempdir).unwrap();
+        std::env::set_current_dir(&test_tempdir).unwrap();
 
         // Create the ~/.bashrc file.
         let bash_file = test_tempdir.join(".bashrc");
