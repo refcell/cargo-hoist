@@ -344,6 +344,7 @@ mod tests {
     use super::*;
 
     #[test]
+    #[serial]
     fn test_setup() {
         // Create a tempdir and set it as the current working directory
         let tempdir = tempfile::tempdir().unwrap();
@@ -389,6 +390,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_install() {
         // Populate the temporary directory.
         let tempdir = tempfile::tempdir().unwrap();
