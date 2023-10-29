@@ -15,7 +15,7 @@ use tracing::Level;
 pub struct Args {
     /// Verbosity level (0-4)
     #[arg(long, short, action = ArgAction::Count, default_value = "0")]
-    verbosity: u8,
+    pub verbosity: u8,
 
     /// The cargo-hoist subcommand
     #[clap(subcommand)]
@@ -160,11 +160,13 @@ impl HoistRegistry {
                 anyhow::bail!("cargo hoist installation rejected");
             }
             // Write the bash function to the user's bash file.
-            let bash_file = std::env::var("HOME")? + "/.bashrc";
-            if !std::path::Path::new(&bash_file).exists() {
+            let shell_config = get_shell_config_file(detect_shell()?)?;
+            if !shell_config.as_path().exists() {
                 anyhow::bail!("~/.bashrc file does not exist");
             }
-            let mut file = std::fs::OpenOptions::new().append(true).open(bash_file)?;
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(shell_config)?;
             file.write_all(INSTALL_BASH_FUNCTION.as_bytes())?;
 
             let mut file = std::fs::OpenOptions::new()
@@ -309,6 +311,42 @@ impl HoistRegistry {
         }
 
         Ok(())
+    }
+}
+
+/// The type of shell
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShellType {
+    /// Zsh
+    Zsh,
+    /// Bash
+    Bash,
+    /// Other
+    Other,
+}
+
+/// Detect the type of shell a user is using.
+pub fn detect_shell() -> Result<ShellType> {
+    if let Ok(shell_path) = std::env::var("SHELL") {
+        if shell_path.contains("zsh") {
+            Ok(ShellType::Zsh)
+        } else if shell_path.contains("bash") {
+            Ok(ShellType::Bash)
+        } else {
+            Ok(ShellType::Other)
+        }
+    } else {
+        Err(anyhow::anyhow!("Unable to determine the user's shell."))
+    }
+}
+
+/// Helper to get the path to the user's shell config file.
+pub fn get_shell_config_file(shell_type: ShellType) -> Result<PathBuf> {
+    let home_dir = std::env::var("HOME")?;
+    match shell_type {
+        ShellType::Zsh => Ok(PathBuf::from(format!("{}/.zshrc", home_dir))),
+        ShellType::Bash => Ok(PathBuf::from(format!("{}/.bashrc", home_dir))),
+        ShellType::Other => Err(anyhow::anyhow!("Unsupported shell type.")),
     }
 }
 

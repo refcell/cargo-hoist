@@ -8,6 +8,7 @@ authors = ["refcell"]
 repository = "https://github.com/refcell/cargo-hoist"
 homepage = "https://github.com/refcell/cargo-hoist"
 exclude = ["tests"]
+default-run = "cargo-hoist"
 
 [[bin]]
 name = "cargo-hoist"
