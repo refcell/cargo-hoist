@@ -21,7 +21,7 @@
 [Docs-rs]: https://docs.rs/cargo-hoist/
 [Docs]: https://img.shields.io/docsrs/cargo-hoist.svg?color=319e8c&label=docs.rs
 
-**Dead simple cargo subcommand to hoist cargo-built binaries into the current working directory.** cargo-hoist is https://github.com/refcell/cargo-hoist/labels/beta
+**Dead simple cargo subcommand to hoist cargo-built binaries into scope.** `cargo-hoist` is https://github.com/refcell/cargo-hoist/labels/beta
 
 ![](./etc/banner.png)
 
