@@ -15,7 +15,7 @@ pub struct Args {
     #[arg(long, short, action = ArgAction::Count, default_value = "0")]
     verbosity: u8,
 
-    /// The subcommand to run
+    /// The cargo-hoist subcommand
     #[clap(subcommand)]
     pub command: Option<Command>,
 }

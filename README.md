@@ -21,7 +21,7 @@
 [Docs-rs]: https://docs.rs/cargo-hoist/
 [Docs]: https://img.shields.io/docsrs/cargo-hoist.svg?color=319e8c&label=docs.rs
 
-**Dead simple cargo subcommand to hoist cargo-built binaries into the current working directory.** hoist is https://github.com/refcell/cargo-hoist/labels/beta
+**Dead simple cargo subcommand to hoist cargo-built binaries into the current working directory.** cargo-hoist is https://github.com/refcell/cargo-hoist/labels/beta
 
 ![](./etc/banner.png)
 
@@ -56,14 +56,16 @@ cargo install cargo-hoist
 
 Contributions of all forms are welcome and encouraged!
 
-## Troubleshooting & Bug Reports
+Please check [existing issues][issues] for similar feature requests or bug reports.
 
-Please check existing issues for similar bugs or
-[open an issue](https://github.com/refcell/cargo-hoist/issues/new)
-if no relevant issue already exists.
+Otherwise, feel free to [open an issue][oissue] if no relevant issue already exists.
+
+[issues]: https://github.com/refcell/cargo-hoist/issues
+[oissue]: https://github.com/refcell/cargo-hoist/issues/new
+
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE.md).
-Free and open-source, forever.
-*All our rust are belong to you.*
+This project is licensed under the [MIT License][mit-license].
+
+Free and open-source, forever. *All our rust are belong to you.*
