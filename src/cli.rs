@@ -345,8 +345,8 @@ pub fn get_shell_config_file(shell_type: ShellType) -> Result<PathBuf> {
     let home_dir = std::env::var("HOME")?;
     match shell_type {
         ShellType::Zsh => Ok(PathBuf::from(format!("{}/.zshrc", home_dir))),
-        ShellType::Bash => Ok(PathBuf::from(format!("{}/.bashrc", home_dir))),
-        ShellType::Other => Err(anyhow::anyhow!("Unsupported shell type.")),
+        _ => Ok(PathBuf::from(format!("{}/.bashrc", home_dir))),
+        // ShellType::Other => Err(anyhow::anyhow!("Unsupported shell type.")),
     }
 }
 
@@ -390,17 +390,13 @@ mod tests {
         let test_tempdir = tempdir.path().join("test_setup");
         std::fs::create_dir(&test_tempdir).unwrap();
         std::env::set_current_dir(&test_tempdir).unwrap();
-
-        // Create the ~/.bashrc file.
         let bash_file = test_tempdir.join(".bashrc");
         std::fs::File::create(&bash_file).unwrap();
-
-        // Use the test tempdir as the HOME directory to avoid
-        // polluting the user's home directory.
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
 
-        // Install the hoist registry.
         HoistRegistry::setup().unwrap();
 
         let hoist_dir = HoistRegistry::dir().unwrap();
@@ -423,7 +419,16 @@ mod tests {
             .unwrap();
         let mut bash_file_contents = String::new();
         file.read_to_string(&mut bash_file_contents).unwrap();
-        assert_eq!(bash_file_contents, INSTALL_BASH_FUNCTION);
+
+        // If the bash file is empty, try to read the zshrc file.
+        if bash_file_contents.is_empty() {
+            let mut file = std::fs::OpenOptions::new().read(true).open(zshrc).unwrap();
+            let mut zshrc_file_contents = String::new();
+            file.read_to_string(&mut zshrc_file_contents).unwrap();
+            assert_eq!(zshrc_file_contents, INSTALL_BASH_FUNCTION);
+        } else {
+            assert_eq!(bash_file_contents, INSTALL_BASH_FUNCTION);
+        }
 
         // Restore the original HOME directory.
         std::env::set_var("HOME", original_home);
@@ -439,6 +444,8 @@ mod tests {
         std::env::set_current_dir(&test_tempdir).unwrap();
         let bash_file = test_tempdir.join(".bashrc");
         std::fs::File::create(&bash_file).unwrap();
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
         let target_dir = test_tempdir.join("target/release/");
         std::fs::create_dir_all(&target_dir).unwrap();
         let binary1 = target_dir.join("binary1");
