@@ -43,9 +43,7 @@ pub enum Command {
 pub const INSTALL_BASH_FUNCTION: &str = r#"
 function cargo() {
     if ~/.cargo/bin/cargo hoist --help &>/dev/null; then
-      echo "bash has subcommand ws"
-    else
-      echo "The ws subcommand does not exist in cargo."
+      ~/.cargo/bin/cargo hoist install
     fi
     ~/.cargo/bin/cargo "$@"
 }
@@ -180,8 +178,6 @@ impl HoistRegistry {
 
     /// Installs binaries in the hoist toml registry.
     pub fn install(binaries: Option<Vec<String>>) -> Result<()> {
-        // First we check if the ~/.hoist/registry.toml file exists.
-        // If it doesn't, then we create it.
         HoistRegistry::setup()?;
 
         // Then we read the registry file into a HoistRegistry object.
@@ -221,8 +217,6 @@ impl HoistRegistry {
 
     /// Lists the binaries in the hoist toml registry.
     pub fn list() -> Result<()> {
-        // First we check if the ~/.hoist/registry.toml file exists.
-        // If it doesn't, then we create it.
         HoistRegistry::setup()?;
 
         // Then we read the registry file into a HoistRegistry object.
@@ -242,8 +236,6 @@ impl HoistRegistry {
 
     /// Hoists binaries from the hoist toml registry into scope.
     pub fn hoist(binaries: Option<Vec<String>>) -> Result<()> {
-        // First we check if the ~/.hoist/registry.toml file exists.
-        // If it doesn't, then we create it.
         HoistRegistry::setup()?;
 
         // Then we read the registry file into a HoistRegistry object.
