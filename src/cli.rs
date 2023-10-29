@@ -342,6 +342,7 @@ pub fn init_tracing_subscriber(verbosity_level: u8) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     #[serial]
