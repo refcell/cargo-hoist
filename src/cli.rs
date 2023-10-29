@@ -336,7 +336,9 @@ pub fn detect_shell() -> Result<ShellType> {
             Ok(ShellType::Other)
         }
     } else {
-        Err(anyhow::anyhow!("Unable to determine the user's shell."))
+        // default to bash for now
+        Ok(ShellType::Bash)
+        // Err(anyhow::anyhow!("Unable to determine the user's shell."))
     }
 }
 
