@@ -15,7 +15,7 @@ use tracing::Level;
 pub struct Args {
     /// Verbosity level (0-4)
     #[arg(long, short, action = ArgAction::Count, default_value = "0")]
-    verbosity: u8,
+    pub verbosity: u8,
 
     /// The cargo-hoist subcommand
     #[clap(subcommand)]
@@ -160,11 +160,13 @@ impl HoistRegistry {
                 anyhow::bail!("cargo hoist installation rejected");
             }
             // Write the bash function to the user's bash file.
-            let bash_file = std::env::var("HOME")? + "/.bashrc";
-            if !std::path::Path::new(&bash_file).exists() {
+            let shell_config = get_shell_config_file(detect_shell()?)?;
+            if !shell_config.as_path().exists() {
                 anyhow::bail!("~/.bashrc file does not exist");
             }
-            let mut file = std::fs::OpenOptions::new().append(true).open(bash_file)?;
+            let mut file = std::fs::OpenOptions::new()
+                .append(true)
+                .open(shell_config)?;
             file.write_all(INSTALL_BASH_FUNCTION.as_bytes())?;
 
             let mut file = std::fs::OpenOptions::new()
@@ -312,6 +314,44 @@ impl HoistRegistry {
     }
 }
 
+/// The type of shell
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShellType {
+    /// Zsh
+    Zsh,
+    /// Bash
+    Bash,
+    /// Other
+    Other,
+}
+
+/// Detect the type of shell a user is using.
+pub fn detect_shell() -> Result<ShellType> {
+    if let Ok(shell_path) = std::env::var("SHELL") {
+        if shell_path.contains("zsh") {
+            Ok(ShellType::Zsh)
+        } else if shell_path.contains("bash") {
+            Ok(ShellType::Bash)
+        } else {
+            Ok(ShellType::Other)
+        }
+    } else {
+        // default to bash for now
+        Ok(ShellType::Bash)
+        // Err(anyhow::anyhow!("Unable to determine the user's shell."))
+    }
+}
+
+/// Helper to get the path to the user's shell config file.
+pub fn get_shell_config_file(shell_type: ShellType) -> Result<PathBuf> {
+    let home_dir = std::env::var("HOME")?;
+    match shell_type {
+        ShellType::Zsh => Ok(PathBuf::from(format!("{}/.zshrc", home_dir))),
+        _ => Ok(PathBuf::from(format!("{}/.bashrc", home_dir))),
+        // ShellType::Other => Err(anyhow::anyhow!("Unsupported shell type.")),
+    }
+}
+
 /// Initializes the tracing subscriber.
 ///
 /// The verbosity level determines the maximum level of tracing.
@@ -352,17 +392,13 @@ mod tests {
         let test_tempdir = tempdir.path().join("test_setup");
         std::fs::create_dir(&test_tempdir).unwrap();
         std::env::set_current_dir(&test_tempdir).unwrap();
-
-        // Create the ~/.bashrc file.
         let bash_file = test_tempdir.join(".bashrc");
         std::fs::File::create(&bash_file).unwrap();
-
-        // Use the test tempdir as the HOME directory to avoid
-        // polluting the user's home directory.
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
 
-        // Install the hoist registry.
         HoistRegistry::setup().unwrap();
 
         let hoist_dir = HoistRegistry::dir().unwrap();
@@ -385,7 +421,16 @@ mod tests {
             .unwrap();
         let mut bash_file_contents = String::new();
         file.read_to_string(&mut bash_file_contents).unwrap();
-        assert_eq!(bash_file_contents, INSTALL_BASH_FUNCTION);
+
+        // If the bash file is empty, try to read the zshrc file.
+        if bash_file_contents.is_empty() {
+            let mut file = std::fs::OpenOptions::new().read(true).open(zshrc).unwrap();
+            let mut zshrc_file_contents = String::new();
+            file.read_to_string(&mut zshrc_file_contents).unwrap();
+            assert_eq!(zshrc_file_contents, INSTALL_BASH_FUNCTION);
+        } else {
+            assert_eq!(bash_file_contents, INSTALL_BASH_FUNCTION);
+        }
 
         // Restore the original HOME directory.
         std::env::set_var("HOME", original_home);
@@ -401,6 +446,8 @@ mod tests {
         std::env::set_current_dir(&test_tempdir).unwrap();
         let bash_file = test_tempdir.join(".bashrc");
         std::fs::File::create(&bash_file).unwrap();
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
         let target_dir = test_tempdir.join("target/release/");
         std::fs::create_dir_all(&target_dir).unwrap();
         let binary1 = target_dir.join("binary1");

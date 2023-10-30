@@ -1,13 +1,14 @@
 [package]
 name = "cargo-hoist"
 description = "Dead simple, memoized cargo subcommand to hoist cargo-built binaries into scope."
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "MIT"
 authors = ["refcell"]
 repository = "https://github.com/refcell/cargo-hoist"
 homepage = "https://github.com/refcell/cargo-hoist"
 exclude = ["tests"]
+default-run = "cargo-hoist"
 
 [[bin]]
 name = "cargo-hoist"
