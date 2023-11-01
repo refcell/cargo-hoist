@@ -507,7 +507,6 @@ mod tests {
         std::fs::File::create(&zshrc).unwrap();
         let target_dir = test_tempdir.join("target/release/");
         std::fs::create_dir_all(&target_dir).unwrap();
-        // Create an executable file in the target directory.
         let opts = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
@@ -551,6 +550,53 @@ mod tests {
                 ])
             }
         );
+
+        // Restore the original HOME directory.
+        std::env::set_var("HOME", original_home);
+    }
+
+    #[test]
+    #[serial]
+    fn test_hoist() {
+        // Populate the temporary directory.
+        let tempdir = tempfile::tempdir().unwrap();
+        let test_tempdir = tempdir.path().join("test_hoist");
+        std::fs::create_dir(&test_tempdir).unwrap();
+        std::env::set_current_dir(&test_tempdir).unwrap();
+        let bash_file = test_tempdir.join(".bashrc");
+        std::fs::File::create(&bash_file).unwrap();
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
+        let target_dir = test_tempdir.join("target/release/");
+        std::fs::create_dir_all(&target_dir).unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary1"))
+            .unwrap();
+        opts.sync_all().unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary2"))
+            .unwrap();
+        opts.sync_all().unwrap();
+
+        // Install the binaries in the hoist registry.
+        let original_home = std::env::var_os("HOME").unwrap();
+        std::env::set_var("HOME", test_tempdir);
+        HoistRegistry::install(None).unwrap();
+
+        // Hoist binary1 and not binary2 into the current directory.
+        HoistRegistry::hoist(Some(vec!["binary1".to_string()])).unwrap();
+
+        // Check that binary1 was hoisted.
+        let binary1 = std::env::current_dir().unwrap().join("binary1");
+        assert!(std::path::Path::new(&binary1).exists());
+        let binary2 = std::env::current_dir().unwrap().join("binary2");
+        assert!(!std::path::Path::new(&binary2).exists());
 
         // Restore the original HOME directory.
         std::env::set_var("HOME", original_home);
