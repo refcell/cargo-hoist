@@ -4,11 +4,11 @@ use inquire::Confirm;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::hash::Hash;
-use std::io::Read;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::path::PathBuf;
+use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 use tracing::{instrument, Level};
 
 /// Command line arguments
@@ -378,9 +378,20 @@ impl HoistRegistry {
 
         // Then we iterate over the binaries and print them.
         for binary in registry.binaries {
-            println!("{}", binary.name);
+            HoistRegistry::print_color(&format!("{}: ", binary.name), Color::Blue, false)?;
+            HoistRegistry::print_color(&binary.location.display().to_string(), Color::Cyan, true)?;
         }
 
+        Ok(())
+    }
+
+    /// Prints text to stdout in the provided color.
+    #[instrument]
+    pub fn print_color(text: &str, color: Color, newline: bool) -> Result<()> {
+        let mut stdout = StandardStream::stdout(ColorChoice::Always);
+        stdout.set_color(ColorSpec::new().set_fg(Some(color)))?;
+        let newline = if newline { "\n" } else { "" };
+        write!(&mut stdout, "{}{}", text, newline)?;
         Ok(())
     }
 
