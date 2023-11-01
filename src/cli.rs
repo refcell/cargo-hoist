@@ -151,7 +151,6 @@ impl HoistRegistry {
     /// Will not insert if the binary already exists in the registry.
     #[instrument(skip(self, binary))]
     pub fn insert(&mut self, binary: HoistedBinary) {
-        tracing::debug!("Inserting binary: {:?}", binary);
         if !self.binaries.contains(&binary) {
             tracing::debug!("Binary not found in registry. Inserting.");
             self.binaries.insert(binary);
@@ -249,8 +248,6 @@ impl HoistRegistry {
         if !is_file || !is_exec {
             anyhow::bail!("{} is not executable", exec.display());
         }
-        tracing::debug!("detected file: {}", exec.display());
-        tracing::debug!("detected executable: {}", exec.display());
         let bin_file_name = exec
             .file_name()
             .ok_or(anyhow::anyhow!("[std] failed to extract binary name"))?;
@@ -602,6 +599,71 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_multiple_installs() {
+        // Populate the temporary directory.
+        let tempdir = tempfile::tempdir().unwrap();
+        let test_tempdir = tempdir.path().join("test_multiple_installs");
+        std::fs::create_dir(&test_tempdir).unwrap();
+        std::env::set_current_dir(&test_tempdir).unwrap();
+        let bash_file = test_tempdir.join(".bashrc");
+        std::fs::File::create(&bash_file).unwrap();
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
+        let target_dir = test_tempdir.join("target/release/");
+        std::fs::create_dir_all(&target_dir).unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary1"))
+            .unwrap();
+        opts.sync_all().unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary2"))
+            .unwrap();
+        opts.sync_all().unwrap();
+
+        let original_home = std::env::var_os("HOME").unwrap();
+        std::env::set_var("HOME", test_tempdir);
+
+        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new()).unwrap();
+
+        let registry_file = HoistRegistry::path().unwrap();
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(registry_file)
+            .unwrap();
+        let mut registry_toml = String::new();
+        file.read_to_string(&mut registry_toml).unwrap();
+        let registry: HoistRegistry = toml::from_str(&registry_toml).unwrap();
+        assert_eq!(
+            registry,
+            HoistRegistry {
+                binaries: HashSet::from([
+                    HoistedBinary::new(
+                        "binary1".to_string(),
+                        target_dir.join("binary1").canonicalize().unwrap()
+                    ),
+                    HoistedBinary::new(
+                        "binary2".to_string(),
+                        target_dir.join("binary2").canonicalize().unwrap()
+                    ),
+                ])
+            }
+        );
+
+        // Restore the original HOME directory.
+        std::env::set_var("HOME", original_home);
+    }
+
+    #[test]
+    #[serial]
     fn test_hoist() {
         // Populate the temporary directory.
         let tempdir = tempfile::tempdir().unwrap();
@@ -635,6 +697,7 @@ mod tests {
         HoistRegistry::install(Vec::new()).unwrap();
 
         // Hoist binary1 and not binary2 into the current directory.
+        HoistRegistry::hoist(vec!["binary1".to_string()]).unwrap();
         HoistRegistry::hoist(vec!["binary1".to_string()]).unwrap();
 
         // Check that binary1 was hoisted.
