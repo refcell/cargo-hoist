@@ -6,8 +6,10 @@ use std::collections::HashSet;
 use std::hash::Hash;
 use std::io::Read;
 use std::io::Write;
+use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::path::PathBuf;
-use tracing::Level;
+use tracing::{instrument, Level};
 
 /// Command line arguments
 #[derive(Parser, Debug)]
@@ -33,6 +35,8 @@ pub enum Command {
     },
     /// List hoisted dependencies
     List,
+    /// Nuke wipes the hoist toml registry
+    Nuke,
     /// Installs a binary in the global hoist toml registry
     Install {
         /// An optional list of binaries to install in the hoist toml registry
@@ -58,15 +62,18 @@ pub fn run() -> Result<()> {
 
     // On first run, we want to install the hoist pre-hook in the user's bash file.
     // So we want to create it using inquire's confirm prompt.
+    tracing::debug!("Gracefully creating pre hook");
     HoistRegistry::create_pre_hook(true)?;
 
     // Match on the subcommand and run hoist.
+    tracing::debug!("Running command {:?}", command);
     match command {
         None => HoistRegistry::install(None),
         Some(c) => match c {
             Command::Hoist { binaries } => HoistRegistry::hoist(binaries),
             Command::List => HoistRegistry::list(),
             Command::Install { binaries } => HoistRegistry::install(binaries),
+            Command::Nuke => HoistRegistry::nuke(),
         },
     }
 }
@@ -82,8 +89,19 @@ pub struct HoistedBinary {
 
 impl HoistedBinary {
     /// Creates a new hoisted binary.
+    #[instrument(skip(name, location))]
     pub fn new(name: String, location: PathBuf) -> Self {
         Self { name, location }
+    }
+
+    /// Copies the binary to the current directory.
+    #[instrument]
+    pub fn copy_to_current_dir(&self) -> Result<()> {
+        let current_dir = std::env::current_dir()?;
+        let binary_path = current_dir.join(&self.name);
+        tracing::debug!("Copying binary to current directory: {:?}", binary_path);
+        std::fs::copy(&self.location, binary_path)?;
+        Ok(())
     }
 }
 
@@ -98,12 +116,6 @@ pub struct HoistRegistry {
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     pub binaries: HashSet<HoistedBinary>,
 }
-//
-// impl From<Vec<HoistedBinary>> for HoistRegistry {
-//     fn from(binaries: Vec<HoistedBinary>) -> Self {
-//         HoistRegistry { binaries }
-//     }
-// }
 
 impl HoistRegistry {
     /// The path to the hoist directory.
@@ -180,6 +192,7 @@ impl HoistRegistry {
 
     /// Installs the hoist registry to a `.hoist/` subdir in the
     /// user's home directory.
+    #[instrument]
     pub fn setup() -> Result<()> {
         HoistRegistry::create_dir()?;
         HoistRegistry::create_registry()?;
@@ -187,9 +200,75 @@ impl HoistRegistry {
         Ok(())
     }
 
+    /// Returns the fully qualified path for a given binary
+    /// if it is an executable.
+    #[instrument]
+    pub fn exec_path(exec: &Path) -> Result<String> {
+        let is_file = std::fs::metadata(exec)?.is_file();
+        let is_exec = std::fs::metadata(exec)?.permissions().mode() & 0o111 != 0;
+        if !is_file || !is_exec {
+            anyhow::bail!("{} is not executable", exec.display());
+        }
+        tracing::debug!("detected file: {}", exec.display());
+        tracing::debug!("detected executable: {}", exec.display());
+        let bin_file_name = exec
+            .file_name()
+            .ok_or(anyhow::anyhow!("[std] failed to extract binary name"))?;
+        let binary_name = bin_file_name
+            .to_str()
+            .ok_or(anyhow::anyhow!(
+                "[std] failed to convert binary path name to string"
+            ))?
+            .to_string();
+        tracing::debug!("retrieved binary name: {}", binary_name);
+        Ok(binary_name)
+    }
+
+    /// Attempt to grab built binaries from the target directory.
+    #[instrument]
+    pub fn grab_binaries() -> Result<Vec<String>> {
+        let target_dir = std::env::current_dir()?.join("target/release/");
+        tracing::debug!("Parsing binaries in target directory: {:?}", target_dir);
+        let mut binaries = vec![];
+        for entry in std::fs::read_dir(target_dir)? {
+            let Ok(e) = entry else {
+                tracing::warn!("Failed to read entry: {:?}", entry);
+                continue;
+            };
+            let Ok(exec) = HoistRegistry::exec_path(&e.path()) else {
+                tracing::warn!("Failed to get exec path: {:?}", e);
+                continue;
+            };
+            tracing::debug!("Found binary: {}", exec);
+            binaries.push(exec);
+        }
+        tracing::debug!("Returning {} binaries", binaries.len());
+        Ok(binaries)
+    }
+
+    /// Nukes the hoist toml registry.
+    /// This writes an empty registry to the registry file.
+    #[instrument]
+    pub fn nuke() -> Result<()> {
+        HoistRegistry::setup()?;
+        let registry_file = HoistRegistry::path()?;
+        // Clear the file before writing the empty registry.
+        std::fs::File::create(&registry_file)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(registry_file)?;
+        let registry = HoistRegistry::default();
+        let toml = toml::to_string(&registry)?;
+        file.write_all(toml.as_bytes())?;
+        tracing::info!("Successfully nuked the hoist registry");
+        Ok(())
+    }
+
     /// Installs binaries in the hoist toml registry.
+    #[instrument(skip(binaries))]
     pub fn install(binaries: Option<Vec<String>>) -> Result<()> {
         HoistRegistry::setup()?;
+        tracing::debug!("Installing binaries: {:?}", binaries);
 
         // Then we read the registry file into a HoistRegistry object.
         let registry_file = HoistRegistry::path()?;
@@ -200,33 +279,16 @@ impl HoistRegistry {
         let mut registry_toml = String::new();
         file.read_to_string(&mut registry_toml)?;
         let mut registry: HoistRegistry = toml::from_str(&registry_toml)?;
+        tracing::debug!("Registry: {:?}", registry);
 
         // Then we iterate over the binaries and add them to the registry.
         let binaries = match binaries {
             Some(b) => b,
-            None => {
-                // Try to read all binaries in the target directory.
-                let mut binaries = vec![];
-                let target_dir = std::env::current_dir()?.join("target/release/");
-                for entry in std::fs::read_dir(target_dir)? {
-                    let entry = entry?;
-                    let path = entry.path();
-                    let bin_file_name = path
-                        .file_name()
-                        .ok_or(anyhow::anyhow!("[std] failed to extract binary name"))?;
-                    let binary_name = bin_file_name
-                        .to_str()
-                        .ok_or(anyhow::anyhow!(
-                            "[std] failed to convert binary path name to string"
-                        ))?
-                        .to_string();
-                    binaries.push(binary_name);
-                }
-                binaries
-            }
+            None => HoistRegistry::grab_binaries().unwrap_or_default(),
         };
 
-        for binary in binaries {
+        tracing::debug!("Hoisting {} binaries", binaries.len());
+        for binary in &binaries {
             let binary_path = std::env::current_dir()?
                 .join("target/release/")
                 .join(binary);
@@ -240,18 +302,26 @@ impl HoistRegistry {
                     "[std] failed to convert binary path name to string"
                 ))?
                 .to_string();
+            tracing::debug!("Hoisted binary: {}", binary_name);
             let binary = HoistedBinary::new(binary_name, binary_path);
             registry.binaries.insert(binary);
         }
 
-        // Then we write the registry back to the registry file.
-        let toml = toml::to_string(&registry)?;
-        file.write_all(toml.as_bytes())?;
+        // Only perform a writeback if there are binaries to hoist.
+        match binaries.len() {
+            0 => tracing::warn!("No binaries found in the target directory"),
+            _ => {
+                let toml = toml::to_string(&registry)?;
+                file.write_all(toml.as_bytes())?;
+                tracing::info!("Successfully hoisted binaries to the registry")
+            }
+        }
 
         Ok(())
     }
 
     /// Lists the binaries in the hoist toml registry.
+    #[instrument]
     pub fn list() -> Result<()> {
         HoistRegistry::setup()?;
 
@@ -271,6 +341,7 @@ impl HoistRegistry {
     }
 
     /// Hoists binaries from the hoist toml registry into scope.
+    #[instrument(skip(binaries))]
     pub fn hoist(binaries: Option<Vec<String>>) -> Result<()> {
         HoistRegistry::setup()?;
 
@@ -281,34 +352,19 @@ impl HoistRegistry {
         file.read_to_string(&mut registry_toml)?;
         let registry: HoistRegistry = toml::from_str(&registry_toml)?;
 
-        // Then we iterate over the binaries and print them.
         let binaries = binaries.unwrap_or_default();
-        for binary in binaries {
-            let binary = registry
-                .binaries
-                .iter()
-                .find(|b| b.name == binary)
-                .ok_or_else(|| anyhow::anyhow!("Binary not found in hoist registry"))?;
-            let binary_path = binary.location.clone();
-            let binary_path = binary_path.canonicalize()?;
-            let bin_file_name = binary_path
-                .file_name()
-                .ok_or(anyhow::anyhow!("[std] failed to extract binary name"))?;
-            let binary_name = bin_file_name
-                .to_str()
-                .ok_or(anyhow::anyhow!(
-                    "[std] failed to convert binary path name to string"
-                ))?
-                .to_string();
-            let binary_path = binary_path
-                .to_str()
-                .ok_or(anyhow::anyhow!(
-                    "[std] failed to convert binary path name to string"
-                ))?
-                .to_string();
-            println!("export PATH={}:$PATH", binary_path);
-            println!("alias {}={}", binary_name, binary_name);
+
+        if !registry.binaries.iter().any(|b| binaries.contains(&b.name)) {
+            anyhow::bail!("Failed to find binaries in hoist registry");
         }
+
+        tracing::debug!("Hoisting {} binaries", std::env::current_dir()?.display());
+        registry
+            .binaries
+            .iter()
+            .filter(|b| binaries.contains(&b.name))
+            .map(|b| b.copy_to_current_dir())
+            .collect::<Result<()>>()?;
 
         Ok(())
     }
