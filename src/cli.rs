@@ -601,4 +601,56 @@ mod tests {
         // Restore the original HOME directory.
         std::env::set_var("HOME", original_home);
     }
+
+    #[test]
+    #[serial]
+    fn test_nuke() {
+        // Populate the temporary directory.
+        let tempdir = tempfile::tempdir().unwrap();
+        let test_tempdir = tempdir.path().join("test_nuke");
+        std::fs::create_dir(&test_tempdir).unwrap();
+        std::env::set_current_dir(&test_tempdir).unwrap();
+        let bash_file = test_tempdir.join(".bashrc");
+        std::fs::File::create(&bash_file).unwrap();
+        let zshrc = test_tempdir.join(".zshrc");
+        std::fs::File::create(&zshrc).unwrap();
+        let target_dir = test_tempdir.join("target/release/");
+        std::fs::create_dir_all(&target_dir).unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary1"))
+            .unwrap();
+        opts.sync_all().unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary2"))
+            .unwrap();
+        opts.sync_all().unwrap();
+
+        // Install the binaries in the hoist registry.
+        let original_home = std::env::var_os("HOME").unwrap();
+        std::env::set_var("HOME", test_tempdir);
+        HoistRegistry::install(None).unwrap();
+
+        // Nuke the hoist registry.
+        HoistRegistry::nuke().unwrap();
+
+        // Check that the registry is empty.
+        let registry_file = HoistRegistry::path().unwrap();
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(registry_file)
+            .unwrap();
+        let mut registry_toml = String::new();
+        file.read_to_string(&mut registry_toml).unwrap();
+        let registry: HoistRegistry = toml::from_str(&registry_toml).unwrap();
+        assert_eq!(registry, HoistRegistry::default());
+
+        // Restore the original HOME directory.
+        std::env::set_var("HOME", original_home);
+    }
 }
