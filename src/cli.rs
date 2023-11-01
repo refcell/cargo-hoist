@@ -363,8 +363,7 @@ impl HoistRegistry {
             .binaries
             .iter()
             .filter(|b| binaries.contains(&b.name))
-            .map(|b| b.copy_to_current_dir())
-            .collect::<Result<()>>()?;
+            .try_for_each(|b| b.copy_to_current_dir())?;
 
         Ok(())
     }
@@ -437,6 +436,8 @@ pub fn init_tracing_subscriber(verbosity_level: u8) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use std::os::unix::prelude::OpenOptionsExt;
+
     use super::*;
     use serial_test::serial;
 
@@ -506,10 +507,22 @@ mod tests {
         std::fs::File::create(&zshrc).unwrap();
         let target_dir = test_tempdir.join("target/release/");
         std::fs::create_dir_all(&target_dir).unwrap();
-        let binary1 = target_dir.join("binary1");
-        std::fs::File::create(&binary1).unwrap();
-        let binary2 = target_dir.join("binary2");
-        std::fs::File::create(&binary2).unwrap();
+        // Create an executable file in the target directory.
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary1"))
+            .unwrap();
+        opts.sync_all().unwrap();
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(target_dir.join("binary2"))
+            .unwrap();
+        opts.sync_all().unwrap();
+
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
 
