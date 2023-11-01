@@ -16,3 +16,6 @@ Cargo.lock
 .DS_Store
 .env
 
+# Binaries that might be accidentally hoisted when run locally
+cargo-hoist
+cargo-h
