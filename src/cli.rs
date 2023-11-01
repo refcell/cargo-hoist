@@ -37,12 +37,19 @@ pub enum Command {
         #[clap(short, long)]
         binaries: Option<Vec<String>>,
     },
-    /// List hoisted dependencies
+    /// List registered dependencies.
     List,
-    /// Nuke wipes the hoist toml registry
+    /// Search for a binary in the hoist toml registry.
+    #[clap(alias = "find")]
+    Search {
+        /// The binary to search for in the hoist toml registry.
+        binary: String,
+    },
+    /// Nuke wipes the hoist toml registry.
     Nuke,
-    /// Installs a binary in the global hoist toml registry
-    Install {
+    /// Registers a binary in the global hoist toml registry
+    #[clap(alias = "install")]
+    Register {
         /// An optional list of binaries to install in the hoist toml registry
         bins: Option<Vec<String>>,
 
@@ -81,8 +88,9 @@ pub fn run() -> Result<()> {
             Command::Hoist { binaries, bins } => {
                 HoistRegistry::hoist(merge_and_dedup_vecs(binaries, bins))
             }
+            Command::Search { binary } => HoistRegistry::find(binary),
             Command::List => HoistRegistry::list(),
-            Command::Install { binaries, bins } => {
+            Command::Register { binaries, bins } => {
                 HoistRegistry::install(merge_and_dedup_vecs(binaries, bins))
             }
             Command::Nuke => HoistRegistry::nuke(),
@@ -361,6 +369,30 @@ impl HoistRegistry {
             }
         }
 
+        Ok(())
+    }
+
+    /// Finds a given binary in the hoist registry toml.
+    #[instrument(skip(binary))]
+    pub fn find(binary: impl AsRef<str>) -> Result<()> {
+        HoistRegistry::setup()?;
+
+        // Then we read the registry file into a HoistRegistry object.
+        let registry_file = HoistRegistry::path()?;
+        let mut file = std::fs::OpenOptions::new().read(true).open(registry_file)?;
+        let mut registry_toml = String::new();
+        file.read_to_string(&mut registry_toml)?;
+        let registry: HoistRegistry = toml::from_str(&registry_toml)?;
+
+        // Find the binary in the registry.
+        let binary = binary.as_ref();
+        let binary = registry
+            .binaries
+            .iter()
+            .find(|b| b.name == binary)
+            .ok_or(anyhow::anyhow!("Failed to find binary in hoist registry"))?;
+        HoistRegistry::print_color(&format!("{}: ", binary.name), Color::Blue, false)?;
+        HoistRegistry::print_color(&binary.location.display().to_string(), Color::Cyan, true)?;
         Ok(())
     }
 
