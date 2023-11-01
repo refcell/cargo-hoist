@@ -54,7 +54,7 @@ cargo install cargo-hoist
 
 ## CLI Flags
 
-Below is a manual output for `v0.1.3`.
+Below is a manual output for `v0.1.5`.
 To generate a more up-to-date output, run `cargo hoist --help`. 
 
 ```text
@@ -63,11 +63,12 @@ Dead simple, memoized cargo subcommand to hoist cargo-built binaries into scope.
 Usage: cargo-hoist [OPTIONS] [COMMAND]
 
 Commands:
-  hoist    Hoist dependencies
-  list     List hoisted dependencies
-  nuke     Nuke wipes the hoist toml registry
-  install  Installs a binary in the global hoist toml registry
-  help     Print this message or the help of the given subcommand(s)
+  hoist     Hoist dependencies
+  list      List registered dependencies
+  search    Search for a binary in the hoist toml registry
+  nuke      Nuke wipes the hoist toml registry
+  register  Registers a binary in the global hoist toml registry
+  help      Print this message or the help of the given subcommand(s)
 
 Options:
   -v, --verbosity...  Verbosity level (0-4)
