@@ -99,7 +99,9 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_no_args() {
-        let original_home = std::env::current_dir().unwrap();
+        let proot = project_root::get_project_root().unwrap();
+        println!("Got project root: {:?}", proot);
+        let original_home = proot;
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
