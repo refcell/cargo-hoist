@@ -148,17 +148,17 @@ For more information, try '--help'.
     /// Helper function to setup a batteries included [TempDir].
     fn setup_test_dir() -> (PathBuf, tempfile::TempDir) {
         let tempdir = tempfile::tempdir().unwrap();
+        let test_tempdir = tempdir.path().join(s);
+        std::fs::create_dir(&test_tempdir).unwrap();
         // copy the cargo hoist bin to the tempdir
         let hoist_bin = PathBuf::from("target/release/cargo-hoist");
-        let hoist_bin_dest = tempdir.path().join(HOIST_BIN);
+        let hoist_bin_dest = test_tempdir.join(HOIST_BIN);
         std::fs::copy(hoist_bin, hoist_bin_dest).unwrap();
         let s: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(7)
             .map(char::from)
             .collect();
-        let test_tempdir = tempdir.path().join(s);
-        std::fs::create_dir(&test_tempdir).unwrap();
         std::env::set_current_dir(&test_tempdir).unwrap();
         (test_tempdir, tempdir)
     }
