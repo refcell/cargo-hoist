@@ -13,8 +13,16 @@
 #![deny(unused_must_use, rust_2018_idioms)]
 #![cfg_attr(docsrs, feature(doc_cfg, doc_auto_cfg))]
 
+pub mod binaries;
+pub mod cli;
+pub mod registry;
+pub mod shell;
+pub mod telemetry;
+pub mod utils;
+
 #[doc(inline)]
 pub use cli::run;
-
-/// The CLI module.
-pub mod cli;
+#[doc(inline)]
+pub use cli::Args;
+#[doc(inline)]
+pub use cli::Command;
