@@ -151,7 +151,7 @@ For more information, try '--help'.
         let test_tempdir = tempdir.path().join(s);
         std::fs::create_dir(&test_tempdir).unwrap();
         // copy the cargo hoist bin to the tempdir
-        let hoist_bin = PathBuf::from("target/release/cargo-hoist");
+        let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
         let hoist_bin_dest = test_tempdir.join(HOIST_BIN);
         std::fs::copy(hoist_bin, hoist_bin_dest).unwrap();
         let s: String = rand::thread_rng()
