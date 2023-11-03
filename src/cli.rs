@@ -99,39 +99,48 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_no_args() {
+        let original_home = std::env::var_os("HOME").unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
         assert.success().stdout("");
+        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_nuke() {
+        let original_home = std::env::var_os("HOME").unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("nuke").assert().success().stdout("");
+        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_install() {
+        let original_home = std::env::var_os("HOME").unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("install").assert().success().stdout("");
+        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_list() {
+        let original_home = std::env::var_os("HOME").unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("list").assert().success();
+        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_unrecognized_subcommand() {
+        let original_home = std::env::var_os("HOME").unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.arg("foobar").assert();
@@ -143,6 +152,7 @@ Usage: cargo-hoist [OPTIONS] [COMMAND]
 For more information, try '--help'.
 "#,
         );
+        std::env::set_var("HOME", original_home);
     }
 
     /// Helper function to setup a batteries included [TempDir].
