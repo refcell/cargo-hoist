@@ -156,7 +156,7 @@ For more information, try '--help'.
         let test_tempdir = tempdir.path().join(s);
         std::fs::create_dir(&test_tempdir).unwrap();
         // copy the cargo hoist bin to the tempdir
-        let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
+        // let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
         // list the contents of the target/debug/ dir
         std::fs::read_dir("target/debug/")
             .unwrap()
