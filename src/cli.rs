@@ -161,8 +161,8 @@ For more information, try '--help'.
         std::fs::read_dir("target/debug/")
             .unwrap()
             .for_each(|e| println!("{:?}", e));
-        let hoist_bin_dest = test_tempdir.join(HOIST_BIN);
-        std::fs::copy(hoist_bin, &hoist_bin_dest).unwrap();
+        // let hoist_bin_dest = test_tempdir.join(HOIST_BIN);
+        // std::fs::copy(hoist_bin, &hoist_bin_dest).unwrap();
         std::env::set_current_dir(&PathBuf::from("target/debug")).unwrap();
         // list the contents of the test tempdir
         std::fs::read_dir(&test_tempdir)
