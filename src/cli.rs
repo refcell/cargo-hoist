@@ -104,6 +104,7 @@ mod tests {
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
         assert.success().stdout("");
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -114,6 +115,7 @@ mod tests {
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("nuke").assert().success().stdout("");
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -124,6 +126,7 @@ mod tests {
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("install").assert().success().stdout("");
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -134,6 +137,7 @@ mod tests {
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("list").assert().success();
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -152,6 +156,7 @@ Usage: cargo-hoist [OPTIONS] [COMMAND]
 For more information, try '--help'.
 "#,
         );
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
