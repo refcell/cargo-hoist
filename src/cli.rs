@@ -97,54 +97,39 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_no_args() {
-        let proot = project_root::get_project_root().unwrap();
-        println!("Got project root: {:?}", proot);
-        let original_home = proot;
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
         assert.success().stdout("");
-        std::env::set_current_dir(&original_home).unwrap();
-        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_nuke() {
-        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("nuke").assert().success().stdout("");
-        std::env::set_current_dir(&original_home).unwrap();
-        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_install() {
-        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("install").assert().success().stdout("");
-        std::env::set_current_dir(&original_home).unwrap();
-        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_list() {
-        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("list").assert().success();
-        std::env::set_current_dir(&original_home).unwrap();
-        std::env::set_var("HOME", original_home);
     }
 
     #[test]
     #[serial]
     fn test_cli_unrecognized_subcommand() {
-        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.arg("foobar").assert();
@@ -156,8 +141,6 @@ Usage: cargo-hoist [OPTIONS] [COMMAND]
 For more information, try '--help'.
 "#,
         );
-        std::env::set_current_dir(&original_home).unwrap();
-        std::env::set_var("HOME", original_home);
     }
 
     /// Helper function to setup a batteries included [TempDir].
@@ -174,12 +157,22 @@ For more information, try '--help'.
 
         // Try to copy the cargo-hoist binary from the target/debug/
         // directory, falling back to a manual install if not present.
-        let cargo_hoist_bin = std::env::current_dir()
-            .unwrap()
-            .join("target/debug/cargo-hoist");
-        if cargo_hoist_bin.exists() {
-            std::fs::copy(cargo_hoist_bin, test_tempdir.join("cargo-hoist")).unwrap();
-        } else {
+        let backup = match std::env::current_dir() {
+            Ok(d) => {
+                if d.join("target/debug/cargo-hoist").exists() {
+                    std::fs::copy(
+                        d.join("target/debug/cargo-hoist"),
+                        test_tempdir.join("cargo-hoist"),
+                    )
+                    .unwrap();
+                    false
+                } else {
+                    true
+                }
+            }
+            Err(_) => true,
+        };
+        if backup {
             let _ = std::process::Command::new("cargo")
                 .args(["install", "--path", "."])
                 .current_dir(&test_tempdir)
