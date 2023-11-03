@@ -157,9 +157,17 @@ For more information, try '--help'.
         std::fs::create_dir(&test_tempdir).unwrap();
         // copy the cargo hoist bin to the tempdir
         let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
+        // list the contents of the target/debug/ dir
+        std::fs::read_dir("target/debug/")
+            .unwrap()
+            .for_each(|e| println!("{:?}", e));
         let hoist_bin_dest = test_tempdir.join(HOIST_BIN);
         std::fs::copy(hoist_bin, hoist_bin_dest).unwrap();
         std::env::set_current_dir(&test_tempdir).unwrap();
+        // list the contents of the test tempdir
+        std::fs::read_dir(&test_tempdir)
+            .unwrap()
+            .for_each(|e| println!("{:?}", e));
         (test_tempdir, tempdir)
     }
 }
