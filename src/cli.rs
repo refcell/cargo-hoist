@@ -429,7 +429,7 @@ impl HoistRegistry {
 
     /// Hoists binaries from the hoist toml registry into scope.
     #[instrument(skip(binaries))]
-    pub fn hoist(binaries: Vec<String>) -> Result<()> {
+    pub fn hoist(mut binaries: Vec<String>) -> Result<()> {
         HoistRegistry::setup()?;
 
         // Then we read the registry file into a HoistRegistry object.
@@ -439,16 +439,38 @@ impl HoistRegistry {
         file.read_to_string(&mut registry_toml)?;
         let registry: HoistRegistry = toml::from_str(&registry_toml)?;
 
-        if !registry.binaries.iter().any(|b| binaries.contains(&b.name)) {
-            anyhow::bail!("Failed to find binaries in hoist registry");
+        // If binaries not contained in the global registry,
+        // check the local build path to see if we want to hoist a local
+        // bin.
+        let mut registered = registry.binaries;
+        if !registered.iter().any(|b| binaries.contains(&b.name)) {
+            // todo(refcell): fuzzy match binaries in case of mispellings
+            //                if found, prompt the user with an inquire confirm
+            let local_bins = HoistRegistry::grab_binaries()
+                .map_err(|_| anyhow::anyhow!("no global or local binaries match"))?;
+            binaries = local_bins.clone();
+            let target_dir = std::env::current_dir()?.join("target/release/");
+            local_bins
+                .into_iter()
+                .map(|b| HoistedBinary::new(b.to_owned(), target_dir.join(b).clone()))
+                .for_each(|hb| {
+                    let _ = registered.insert(hb);
+                });
         }
 
-        tracing::debug!("Hoisting {} binaries", std::env::current_dir()?.display());
-        registry
-            .binaries
+        tracing::debug!("Hoisting {} binaries", binaries.len());
+        tracing::debug!("Hoist dest: {}", std::env::current_dir()?.display());
+        registered
             .iter()
             .filter(|b| binaries.contains(&b.name))
-            .try_for_each(|b| b.copy_to_current_dir())?;
+            .try_for_each(|b| match b.copy_to_current_dir() {
+                Ok(_) => {
+                    HoistRegistry::print_color("Successfully hoisted ", Color::Green, false)?;
+                    HoistRegistry::print_color(&b.name, Color::Magenta, true)?;
+                    Ok(())
+                }
+                Err(e) => Err(e),
+            })?;
 
         Ok(())
     }
