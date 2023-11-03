@@ -149,9 +149,8 @@ For more information, try '--help'.
     fn setup_test_dir() -> (PathBuf, tempfile::TempDir) {
         let tempdir = tempfile::tempdir().unwrap();
         // copy the cargo hoist bin to the tempdir
-        let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
-        let hoist_bin_name = hoist_bin.file_name().unwrap();
-        let hoist_bin_dest = tempdir.path().join(hoist_bin_name);
+        let hoist_bin = PathBuf::from("target/release/cargo-hoist");
+        let hoist_bin_dest = tempdir.path().join(HOIST_BIN);
         std::fs::copy(hoist_bin, hoist_bin_dest).unwrap();
         let s: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
