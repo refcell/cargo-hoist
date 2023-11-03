@@ -113,6 +113,14 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_cli_list() {
+        let (_, _) = setup_test_dir();
+        let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
+        cmd.arg("list").assert().success().stdout("");
+    }
+
+    #[test]
+    #[serial]
     fn test_cli_unrecognized_subcommand() {
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
