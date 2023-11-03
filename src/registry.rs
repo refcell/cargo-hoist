@@ -408,6 +408,7 @@ mod tests {
         }
 
         // Restore the original HOME directory.
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -470,6 +471,7 @@ mod tests {
         );
 
         // Restore the original HOME directory.
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -535,6 +537,7 @@ mod tests {
         );
 
         // Restore the original HOME directory.
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -583,6 +586,7 @@ mod tests {
         assert!(!std::path::Path::new(&binary2).exists());
 
         // Restore the original HOME directory.
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 
@@ -635,6 +639,7 @@ mod tests {
         assert_eq!(registry, HoistRegistry::default());
 
         // Restore the original HOME directory.
+        std::env::set_current_dir(&original_home).unwrap();
         std::env::set_var("HOME", original_home);
     }
 }
