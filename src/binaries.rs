@@ -85,6 +85,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_copy_to_dir() {
+        let original_home = std::env::current_dir().unwrap();
         let tempdir = tempfile::tempdir().unwrap();
         let test_dir = setup_test(&tempdir, "test_copy_to_dir");
         let dest = std::env::current_dir().unwrap().join("dest");
@@ -95,11 +96,13 @@ mod tests {
             b.copy_to_dir(&dest).unwrap();
             assert!(dest.join(&b.name).exists());
         }
+        std::env::set_current_dir(original_home).unwrap();
     }
 
     #[test]
     #[serial]
     fn test_copy_to_current_dir() {
+        let original_home = std::env::current_dir().unwrap();
         let tempdir = tempfile::tempdir().unwrap();
         let test_dir = setup_test(&tempdir, "test_copy_to_current_dir");
         let bins = create_binaries(&test_dir);
@@ -108,5 +111,6 @@ mod tests {
             b.copy_to_current_dir().unwrap();
             assert!(test_dir.join(&b.name).exists());
         }
+        std::env::set_current_dir(original_home).unwrap();
     }
 }
