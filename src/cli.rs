@@ -67,8 +67,6 @@ pub fn run() -> Result<()> {
 
     crate::telemetry::init_tracing_subscriber(verbosity)?;
 
-    // Always attempt to install the hoist pre-hook in the user's shell
-    // config file. If not present, prompt the user with a confirmation.
     HoistRegistry::create_pre_hook(true)?;
 
     match command {
