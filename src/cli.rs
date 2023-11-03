@@ -99,7 +99,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_no_args() {
-        let original_home = std::env::var_os("HOME").unwrap();
+        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
@@ -111,7 +111,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_nuke() {
-        let original_home = std::env::var_os("HOME").unwrap();
+        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("nuke").assert().success().stdout("");
@@ -122,7 +122,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_install() {
-        let original_home = std::env::var_os("HOME").unwrap();
+        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("install").assert().success().stdout("");
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_list() {
-        let original_home = std::env::var_os("HOME").unwrap();
+        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("list").assert().success();
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_unrecognized_subcommand() {
-        let original_home = std::env::var_os("HOME").unwrap();
+        let original_home = std::env::current_dir().unwrap();
         let (_, _) = setup_test_dir();
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.arg("foobar").assert();
