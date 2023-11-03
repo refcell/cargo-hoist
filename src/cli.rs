@@ -147,6 +147,7 @@ For more information, try '--help'.
 
     /// Helper function to setup a batteries included [TempDir].
     fn setup_test_dir() -> (PathBuf, tempfile::TempDir) {
+        // Create the test tempdir
         let tempdir = tempfile::tempdir().unwrap();
         let s: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
@@ -155,19 +156,25 @@ For more information, try '--help'.
             .collect();
         let test_tempdir = tempdir.path().join(s);
         std::fs::create_dir(&test_tempdir).unwrap();
-        // copy the cargo hoist bin to the tempdir
-        // let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
-        // list the contents of the target/debug/ dir
-        std::fs::read_dir("target/debug/")
+
+        // Try to copy the cargo-hoist binary from the target/debug/
+        // directory, falling back to a manual install if not present.
+        let cargo_hoist_bin = std::env::current_dir()
             .unwrap()
-            .for_each(|e| println!("{:?}", e));
-        // let hoist_bin_dest = test_tempdir.join(HOIST_BIN);
-        // std::fs::copy(hoist_bin, &hoist_bin_dest).unwrap();
-        std::env::set_current_dir(&PathBuf::from("target/debug")).unwrap();
-        // list the contents of the test tempdir
-        std::fs::read_dir(&test_tempdir)
-            .unwrap()
-            .for_each(|e| println!("{:?}", e));
+            .join("target/debug/cargo-hoist");
+        if cargo_hoist_bin.exists() {
+            std::fs::copy(cargo_hoist_bin, test_tempdir.join("cargo-hoist")).unwrap();
+        } else {
+            let _ = std::process::Command::new("cargo")
+                .args(["install", "--path", "."])
+                .current_dir(&test_tempdir)
+                .output()
+                .unwrap();
+        }
+
+        // Set the current directory to the test tempdir and return the
+        // test tempdir and the tempdir.
+        std::env::set_current_dir(&test_tempdir).unwrap();
         (test_tempdir, tempdir)
     }
 }

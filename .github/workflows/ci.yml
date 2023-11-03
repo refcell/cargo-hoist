@@ -25,8 +25,6 @@ jobs:
           profile: minimal
           override: true
       - uses: Swatinem/rust-cache@v1
-      - run: cargo build
-      - run: ls -lsa target/debug/
       - run: cargo test --all
       - run: cargo test --all --all-features
 
