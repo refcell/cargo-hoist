@@ -185,7 +185,7 @@ impl HoistRegistry {
 
     /// Installs binaries in the hoist toml registry.
     #[instrument(skip(binaries))]
-    pub fn install(binaries: Vec<String>) -> Result<()> {
+    pub fn install(binaries: Vec<String>, quiet: bool) -> Result<()> {
         HoistRegistry::setup()?;
         tracing::debug!("Installing binaries: {:?}", binaries);
 
@@ -303,7 +303,7 @@ impl HoistRegistry {
 
     /// Hoists binaries from the hoist toml registry into scope.
     #[instrument(skip(binaries))]
-    pub fn hoist(mut binaries: Vec<String>) -> Result<()> {
+    pub fn hoist(mut binaries: Vec<String>, quiet: bool) -> Result<()> {
         HoistRegistry::setup()?;
 
         // Then we read the registry file into a HoistRegistry object.
@@ -339,8 +339,10 @@ impl HoistRegistry {
             .filter(|b| binaries.contains(&b.name))
             .try_for_each(|b| match b.copy_to_current_dir() {
                 Ok(_) => {
-                    HoistRegistry::print_color("Successfully hoisted ", Color::Green, false)?;
-                    HoistRegistry::print_color(&b.name, Color::Magenta, true)?;
+                    if !quiet {
+                        HoistRegistry::print_color("Successfully hoisted ", Color::Green, false)?;
+                        HoistRegistry::print_color(&b.name, Color::Magenta, true)?;
+                    }
                     Ok(())
                 }
                 Err(e) => Err(e),
@@ -441,7 +443,7 @@ mod tests {
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
 
-        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
 
         let registry_file = HoistRegistry::path().unwrap();
         let mut file = std::fs::OpenOptions::new()
@@ -503,10 +505,10 @@ mod tests {
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
 
-        HoistRegistry::install(Vec::new()).unwrap();
-        HoistRegistry::install(Vec::new()).unwrap();
-        HoistRegistry::install(Vec::new()).unwrap();
-        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
 
         let registry_file = HoistRegistry::path().unwrap();
         let mut file = std::fs::OpenOptions::new()
@@ -568,11 +570,11 @@ mod tests {
         // Install the binaries in the hoist registry.
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
-        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
 
         // Hoist binary1 and not binary2 into the current directory.
-        HoistRegistry::hoist(vec!["binary1".to_string()]).unwrap();
-        HoistRegistry::hoist(vec!["binary1".to_string()]).unwrap();
+        HoistRegistry::hoist(vec!["binary1".to_string()], false).unwrap();
+        HoistRegistry::hoist(vec!["binary1".to_string()], false).unwrap();
 
         // Check that binary1 was hoisted.
         let binary1 = std::env::current_dir().unwrap().join("binary1");
@@ -616,7 +618,7 @@ mod tests {
         // Install the binaries in the hoist registry.
         let original_home = std::env::var_os("HOME").unwrap();
         std::env::set_var("HOME", test_tempdir);
-        HoistRegistry::install(Vec::new()).unwrap();
+        HoistRegistry::install(Vec::new(), false).unwrap();
 
         // Nuke the hoist registry.
         HoistRegistry::nuke().unwrap();

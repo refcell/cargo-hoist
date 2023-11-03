@@ -7,7 +7,7 @@ use std::path::PathBuf;
 pub const INSTALL_BASH_FUNCTION: &str = r#"
 function cargo() {
     if ~/.cargo/bin/cargo hoist --help &>/dev/null; then
-      ~/.cargo/bin/cargo hoist install
+      ~/.cargo/bin/cargo hoist --quiet install
     fi
     ~/.cargo/bin/cargo "$@"
 }

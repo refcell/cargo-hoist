@@ -54,7 +54,7 @@ cargo install cargo-hoist
 
 ## CLI Flags
 
-Below is a manual output for `v0.1.5`.
+Below is a manual output for `v0.1.7`.
 To generate a more up-to-date output, run `cargo hoist --help`. 
 
 ```text

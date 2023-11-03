@@ -12,6 +12,10 @@ pub struct Args {
     #[arg(long, short, action = ArgAction::Count, default_value = "0")]
     pub verbosity: u8,
 
+    /// Suppress all stdout.
+    #[arg(long, short)]
+    pub quiet: bool,
+
     /// The cargo-hoist subcommand
     #[clap(subcommand)]
     pub command: Option<Command>,
@@ -55,7 +59,11 @@ pub enum Command {
 
 /// Run the main hoist command
 pub fn run() -> Result<()> {
-    let Args { verbosity, command } = Args::parse();
+    let Args {
+        verbosity,
+        quiet,
+        command,
+    } = Args::parse();
 
     crate::telemetry::init_tracing_subscriber(verbosity)?;
 
@@ -64,15 +72,15 @@ pub fn run() -> Result<()> {
     HoistRegistry::create_pre_hook(true)?;
 
     match command {
-        None => HoistRegistry::install(Vec::new()),
+        None => HoistRegistry::install(Vec::new(), quiet),
         Some(c) => match c {
             Command::Hoist { binaries, bins } => {
-                HoistRegistry::hoist(crate::utils::merge_and_dedup_vecs(binaries, bins))
+                HoistRegistry::hoist(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
             }
             Command::Search { binary } => HoistRegistry::find(binary),
             Command::List => HoistRegistry::list(),
             Command::Register { binaries, bins } => {
-                HoistRegistry::install(crate::utils::merge_and_dedup_vecs(binaries, bins))
+                HoistRegistry::install(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
             }
             Command::Nuke => HoistRegistry::nuke(),
         },
