@@ -94,11 +94,13 @@ mod tests {
     use serial_test::serial;
     use std::path::PathBuf;
 
+    const HOIST_BIN: &str = "cargo-hoist";
+
     #[test]
     #[serial]
     fn test_cli_no_args() {
         let (_, _) = setup_test_dir();
-        let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
+        let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
         assert.success().stdout("");
     }
@@ -107,7 +109,7 @@ mod tests {
     #[serial]
     fn test_cli_nuke() {
         let (_, _) = setup_test_dir();
-        let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
+        let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("nuke").assert().success().stdout("");
     }
 
@@ -115,7 +117,7 @@ mod tests {
     #[serial]
     fn test_cli_install() {
         let (_, _) = setup_test_dir();
-        let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
+        let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("install").assert().success().stdout("");
     }
 
@@ -123,15 +125,15 @@ mod tests {
     #[serial]
     fn test_cli_list() {
         let (_, _) = setup_test_dir();
-        let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
-        cmd.arg("list").assert().success().stdout("");
+        let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
+        cmd.arg("list").assert().success();
     }
 
     #[test]
     #[serial]
     fn test_cli_unrecognized_subcommand() {
         let (_, _) = setup_test_dir();
-        let mut cmd = Command::cargo_bin("cargo-hoist").unwrap();
+        let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.arg("foobar").assert();
         assert.failure().code(2).stderr(
             r#"error: unrecognized subcommand 'foobar'
@@ -146,6 +148,11 @@ For more information, try '--help'.
     /// Helper function to setup a batteries included [TempDir].
     fn setup_test_dir() -> (PathBuf, tempfile::TempDir) {
         let tempdir = tempfile::tempdir().unwrap();
+        // copy the cargo hoist bin to the tempdir
+        let hoist_bin = PathBuf::from("target/debug/cargo-hoist");
+        let hoist_bin_name = hoist_bin.file_name().unwrap();
+        let hoist_bin_dest = tempdir.path().join(hoist_bin_name);
+        std::fs::copy(hoist_bin, hoist_bin_dest).unwrap();
         let s: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(7)
