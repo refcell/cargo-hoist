@@ -4,6 +4,7 @@
 
 use anyhow::Result;
 use inquire::Confirm;
+use is_terminal::IsTerminal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::io::{Read, Write};
@@ -89,7 +90,11 @@ impl HoistRegistry {
         HoistRegistry::create_dir()?;
         let hook_file = HoistRegistry::hook_identifier()?;
         if !std::path::Path::new(&hook_file).exists() {
-            if with_confirm && !Confirm::new("Cargo hoist pre-cargo hook not installed. Do you want to install? ([y]/n) Once installed, this prompt will not bother you again :)").prompt()? {
+            let should_prompt = std::io::stdout().is_terminal() && with_confirm;
+            if should_prompt {
+                tracing::debug!("detected tty, prompting user for install");
+            }
+            if should_prompt && !Confirm::new("Cargo hoist pre-cargo hook not installed. Do you want to install? ([y]/n) Once installed, this prompt will not bother you again :)").prompt()? {
                 anyhow::bail!("cargo hoist installation rejected");
             }
             // Write the bash function to the user's bash file.
