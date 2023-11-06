@@ -54,13 +54,13 @@ cargo install cargo-hoist
 
 ## CLI Flags
 
-Below is a manual output for `v0.1.8`.
+Below is a manual output for `v0.1.9`.
 To generate a more up-to-date output, run `cargo hoist --help`. 
 
 ```text
 Dead simple, memoized cargo subcommand to hoist cargo-built binaries into scope.
 
-Usage: cargo-hoist [OPTIONS] [COMMAND]
+Usage: cargo hoist [OPTIONS] [COMMAND]
 
 Commands:
   hoist     Hoist dependencies
@@ -71,7 +71,7 @@ Commands:
   help      Print this message or the help of the given subcommand(s)
 
 Options:
-  -v, --verbosity...  Verbosity level (0-4)
+  -v, --verbosity...  Verbosity level (0-4). Default: 0 (ERROR)
   -q, --quiet         Suppress all stdout
   -h, --help          Print help
   -V, --version       Print version
