@@ -22,7 +22,9 @@ impl TryFrom<Option<&Path>> for Project {
 
     #[instrument(skip(p))]
     fn try_from(p: Option<&Path>) -> Result<Self> {
-        let p = p.ok_or(std::env::current_dir()?)?;
+        let p = p
+            .map(|p| p.to_path_buf())
+            .unwrap_or(std::env::current_dir()?);
         Ok(Self {
             root: p.to_path_buf(),
             binaries: vec![],
@@ -35,7 +37,9 @@ impl TryFrom<Option<PathBuf>> for Project {
 
     #[instrument(skip(p))]
     fn try_from(p: Option<PathBuf>) -> Result<Self> {
-        let p = p.ok_or(std::env::current_dir()?)?;
+        let p = p
+            .map(|p| p.to_path_buf())
+            .unwrap_or(std::env::current_dir()?);
         Ok(Self {
             root: p,
             binaries: vec![],
@@ -106,6 +110,9 @@ impl Project {
     #[instrument(skip(self))]
     pub fn get_targets(&self) -> Result<Vec<String>> {
         let mut targets = vec![];
+        if !self.root.join("target").exists() {
+            return Ok(targets);
+        }
         for entry in std::fs::read_dir(self.root.join("target"))? {
             let Ok(e) = entry else {
                 tracing::warn!("Failed to read entry: {:?}", entry);
@@ -200,14 +207,25 @@ mod tests {
 
     #[test]
     #[serial]
+    fn test_from_none_pathbuf() {
+        let project = Project::try_from(None::<PathBuf>).unwrap();
+        assert_eq!(project.root, std::env::current_dir().unwrap());
+    }
+
+    #[test]
+    #[serial]
+    fn test_from_none_path() {
+        let project = Project::try_from(None::<&Path>).unwrap();
+        assert_eq!(project.root, std::env::current_dir().unwrap());
+    }
+
+    #[test]
+    #[serial]
     fn test_missing_target() {
         let tempdir = tempfile::tempdir().unwrap();
         let test_dir = setup_test(&tempdir, "test_missing_target");
         let project = Project::from(test_dir.as_path());
-        assert_eq!(
-            project.get_targets().unwrap_err().to_string(),
-            std::io::Error::from_raw_os_error(2).to_string()
-        );
+        assert!(project.get_targets().unwrap().is_empty());
     }
 
     #[test]

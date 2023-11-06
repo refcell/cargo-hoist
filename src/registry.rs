@@ -149,7 +149,14 @@ impl HoistRegistry {
         let mut registry = HoistRegistry::new()?;
 
         // Load binaries from the project
-        let mut p = crate::project::Project::try_from(pdir)?;
+        let mut p = match crate::project::Project::try_from(pdir) {
+            Ok(p) => p,
+            Err(e) => {
+                println!("Failed to load project: {}", e);
+                tracing::warn!("Failed to load project: {}", e);
+                crate::project::Project::from_current_dir()?
+            }
+        };
         let hoisted = if binaries.is_empty() {
             p.load()?;
             p.hoisted_binaries()?
