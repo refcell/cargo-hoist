@@ -67,20 +67,22 @@ pub fn run() -> Result<()> {
 
     crate::telemetry::init_tracing_subscriber(verbosity)?;
 
-    HoistRegistry::create_pre_hook(true)?;
+    HoistRegistry::create_pre_hook(true, false)?;
 
     match command {
-        None => HoistRegistry::install(Vec::new(), quiet),
+        None => HoistRegistry::install(None, Vec::new(), quiet),
         Some(c) => match c {
             Command::Hoist { binaries, bins } => {
                 HoistRegistry::hoist(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
             }
             Command::Search { binary } => HoistRegistry::find(binary),
-            Command::List => HoistRegistry::list(),
-            Command::Register { binaries, bins } => {
-                HoistRegistry::install(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
-            }
-            Command::Nuke => HoistRegistry::nuke(),
+            Command::List => HoistRegistry::list(false),
+            Command::Register { binaries, bins } => HoistRegistry::install(
+                None,
+                crate::utils::merge_and_dedup_vecs(binaries, bins),
+                quiet,
+            ),
+            Command::Nuke => HoistRegistry::nuke(false),
         },
     }
 }
@@ -91,13 +93,15 @@ mod tests {
     use rand::{distributions::Alphanumeric, Rng};
     use serial_test::serial;
     use std::path::PathBuf;
+    use tempfile::TempDir;
 
     const HOIST_BIN: &str = "cargo-hoist";
 
     #[test]
     #[serial]
     fn test_cli_no_args() {
-        let (_, _) = setup_test_dir();
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.assert();
         assert.success().stdout("");
@@ -106,7 +110,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_nuke() {
-        let (_, _) = setup_test_dir();
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("nuke").assert().success().stdout("");
     }
@@ -114,7 +119,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_install() {
-        let (_, _) = setup_test_dir();
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("install").assert().success().stdout("");
     }
@@ -122,7 +128,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_list() {
-        let (_, _) = setup_test_dir();
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         cmd.arg("list").assert().success();
     }
@@ -130,7 +137,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_cli_unrecognized_subcommand() {
-        let (_, _) = setup_test_dir();
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
         let assert = cmd.arg("foobar").assert();
         assert.failure().code(2).stderr(
@@ -144,9 +152,8 @@ For more information, try '--help'.
     }
 
     /// Helper function to setup a batteries included [TempDir].
-    fn setup_test_dir() -> (PathBuf, tempfile::TempDir) {
+    fn setup_test_dir(tempdir: &TempDir) -> PathBuf {
         // Create the test tempdir
-        let tempdir = tempfile::tempdir().unwrap();
         let s: String = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(7)
@@ -183,6 +190,7 @@ For more information, try '--help'.
         // Set the current directory to the test tempdir and return the
         // test tempdir and the tempdir.
         std::env::set_current_dir(&test_tempdir).unwrap();
-        (test_tempdir, tempdir)
+
+        test_tempdir
     }
 }

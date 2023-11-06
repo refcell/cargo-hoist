@@ -15,6 +15,8 @@
 
 pub mod binaries;
 pub mod cli;
+pub mod executables;
+pub mod project;
 pub mod registry;
 pub mod shell;
 pub mod telemetry;

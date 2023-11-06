@@ -54,7 +54,7 @@ cargo install cargo-hoist
 
 ## CLI Flags
 
-Below is a manual output for `v0.1.7`.
+Below is a manual output for `v0.1.8`.
 To generate a more up-to-date output, run `cargo hoist --help`. 
 
 ```text
@@ -72,6 +72,7 @@ Commands:
 
 Options:
   -v, --verbosity...  Verbosity level (0-4)
+  -q, --quiet         Suppress all stdout
   -h, --help          Print help
   -V, --version       Print version
 ```
