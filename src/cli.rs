@@ -67,20 +67,22 @@ pub fn run() -> Result<()> {
 
     crate::telemetry::init_tracing_subscriber(verbosity)?;
 
-    HoistRegistry::create_pre_hook(true)?;
+    HoistRegistry::create_pre_hook(true, false)?;
 
     match command {
-        None => HoistRegistry::install(Vec::new(), quiet),
+        None => HoistRegistry::install(None, Vec::new(), quiet),
         Some(c) => match c {
             Command::Hoist { binaries, bins } => {
                 HoistRegistry::hoist(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
             }
             Command::Search { binary } => HoistRegistry::find(binary),
-            Command::List => HoistRegistry::list(),
-            Command::Register { binaries, bins } => {
-                HoistRegistry::install(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
-            }
-            Command::Nuke => HoistRegistry::nuke(),
+            Command::List => HoistRegistry::list(false),
+            Command::Register { binaries, bins } => HoistRegistry::install(
+                None,
+                crate::utils::merge_and_dedup_vecs(binaries, bins),
+                quiet,
+            ),
+            Command::Nuke => HoistRegistry::nuke(false),
         },
     }
 }
