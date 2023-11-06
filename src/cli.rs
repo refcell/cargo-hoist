@@ -115,7 +115,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
-        let assert = cmd.assert();
+        let assert = cmd.arg("hoist").assert();
         assert.success().stdout("");
     }
 
@@ -125,7 +125,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
-        cmd.arg("nuke").assert().success().stdout("");
+        cmd.arg("hoist").arg("nuke").assert().success().stdout("");
     }
 
     #[test]
@@ -134,7 +134,11 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
-        cmd.arg("install").assert().success().stdout("");
+        cmd.arg("hoist")
+            .arg("install")
+            .assert()
+            .success()
+            .stdout("");
     }
 
     #[test]
@@ -143,7 +147,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
-        cmd.arg("list").assert().success();
+        cmd.arg("hoist").arg("list").assert().success();
     }
 
     #[test]
@@ -152,11 +156,11 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let _ = setup_test_dir(&tempdir);
         let mut cmd = Command::cargo_bin(HOIST_BIN).unwrap();
-        let assert = cmd.arg("foobar").assert();
+        let assert = cmd.arg("hoist").arg("foobar").assert();
         assert.failure().code(2).stderr(
             r#"error: unrecognized subcommand 'foobar'
 
-Usage: cargo-hoist [OPTIONS] [COMMAND]
+Usage: cargo hoist [OPTIONS] [COMMAND]
 
 For more information, try '--help'.
 "#,
