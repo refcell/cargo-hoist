@@ -22,7 +22,7 @@ impl TryFrom<Option<&Path>> for Project {
 
     #[instrument(skip(p))]
     fn try_from(p: Option<&Path>) -> Result<Self> {
-        let p = p.ok_or(anyhow::anyhow!("[std] failed to get project path"))?;
+        let p = p.ok_or(std::env::current_dir()?)?;
         Ok(Self {
             root: p.to_path_buf(),
             binaries: vec![],
@@ -35,7 +35,7 @@ impl TryFrom<Option<PathBuf>> for Project {
 
     #[instrument(skip(p))]
     fn try_from(p: Option<PathBuf>) -> Result<Self> {
-        let p = p.ok_or(anyhow::anyhow!("[std] failed to get project path"))?;
+        let p = p.ok_or(std::env::current_dir()?)?;
         Ok(Self {
             root: p,
             binaries: vec![],
