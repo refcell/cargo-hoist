@@ -21,7 +21,7 @@
 [Docs-rs]: https://docs.rs/cargo-hoist/
 [Docs]: https://img.shields.io/docsrs/cargo-hoist.svg?color=319e8c&label=docs.rs
 
-**Dead simple cargo subcommand to hoist cargo-built binaries into scope.** https://github.com/refcell/cargo-hoist/labels/beta
+**Dead simple cargo subcommand to hoist cargo-built binaries into scope.** https://github.com/refcell/cargo-hoist/labels/stable
 
 ![](./etc/banner.png)
 
@@ -54,7 +54,7 @@ cargo install cargo-hoist
 
 ## CLI Flags
 
-Below is a manual output for `v0.1.9`.
+Below is a manual output for `v0.1.10`.
 To generate a more up-to-date output, run `cargo hoist --help`. 
 
 ```text
@@ -72,7 +72,7 @@ Commands:
 
 Options:
   -v, --verbosity...  Verbosity level (0-4). Default: 0 (ERROR)
-  -q, --quiet         Suppress all stdout
+  -q, --quiet         Suppresses standard output
   -h, --help          Print help
   -V, --version       Print version
 ```

@@ -122,10 +122,8 @@ impl Project {
                 tracing::warn!("Failed to convert entry to string: {:?}", e);
                 continue;
             };
-            tracing::debug!("Found target: {}", target);
             targets.push(target);
         }
-        tracing::debug!("Returning {} targets", targets.len());
         Ok(targets)
     }
 
@@ -139,7 +137,6 @@ impl Project {
             let bins = Project::extract_binaries(&target)?;
             binaries.extend(bins);
         }
-        tracing::debug!("Returning {} binaries", binaries.len());
         self.binaries = binaries;
         Ok(())
     }
@@ -157,14 +154,11 @@ impl Project {
                 continue;
             };
             let Ok(exec) = crate::executables::exec_path(&e.path()) else {
-                tracing::warn!("Failed to get exec path: {:?}", e);
                 continue;
             };
-            tracing::debug!("Found binary: {}", exec);
             let exec = std::fs::canonicalize(target.join(exec))?;
             binaries.push(exec);
         }
-        tracing::debug!("Returning {} binaries", binaries.len());
         Ok(binaries)
     }
 }
