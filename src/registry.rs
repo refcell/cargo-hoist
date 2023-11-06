@@ -152,7 +152,6 @@ impl HoistRegistry {
         let mut p = match crate::project::Project::try_from(pdir) {
             Ok(p) => p,
             Err(e) => {
-                println!("Failed to load project: {}", e);
                 tracing::warn!("Failed to load project: {}", e);
                 crate::project::Project::from_current_dir()?
             }
