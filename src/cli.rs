@@ -4,21 +4,36 @@ use crate::registry::HoistRegistry;
 use anyhow::Result;
 use clap::{ArgAction, Parser, Subcommand};
 
+#[derive(Debug, Parser)]
+#[clap(name = "cargo-hoist", author, bin_name = "cargo", version)]
+enum Cargo {
+    #[clap(alias = "h")]
+    Hoist(Args),
+}
+
 /// Command line arguments
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// Verbosity level (0-4)
+    /// Global options
+    #[clap(flatten)]
+    pub globals: GlobalOpts,
+
+    /// The cargo-hoist subcommand
+    #[clap(subcommand)]
+    pub command: Option<Command>,
+}
+
+/// Global Config Options
+#[derive(Debug, clap::Args)]
+pub struct GlobalOpts {
+    /// Verbosity level (0-4). Default: 0 (ERROR).
     #[arg(long, short, action = ArgAction::Count, default_value = "0")]
     pub verbosity: u8,
 
     /// Suppress all stdout.
     #[arg(long, short)]
     pub quiet: bool,
-
-    /// The cargo-hoist subcommand
-    #[clap(subcommand)]
-    pub command: Option<Command>,
 }
 
 /// Subcommands
@@ -59,28 +74,25 @@ pub enum Command {
 
 /// Run the main hoist command
 pub fn run() -> Result<()> {
-    let Args {
-        verbosity,
-        quiet,
-        command,
-    } = Args::parse();
+    let Cargo::Hoist(arg) = Cargo::parse();
 
-    crate::telemetry::init_tracing_subscriber(verbosity)?;
+    crate::telemetry::init_tracing_subscriber(arg.globals.verbosity)?;
 
     HoistRegistry::create_pre_hook(true, false)?;
 
-    match command {
-        None => HoistRegistry::install(None, Vec::new(), quiet),
+    match arg.command {
+        None => HoistRegistry::install(None, Vec::new(), arg.globals.quiet),
         Some(c) => match c {
-            Command::Hoist { binaries, bins } => {
-                HoistRegistry::hoist(crate::utils::merge_and_dedup_vecs(binaries, bins), quiet)
-            }
+            Command::Hoist { binaries, bins } => HoistRegistry::hoist(
+                crate::utils::merge_and_dedup_vecs(binaries, bins),
+                arg.globals.quiet,
+            ),
             Command::Search { binary } => HoistRegistry::find(binary),
             Command::List => HoistRegistry::list(false),
             Command::Register { binaries, bins } => HoistRegistry::install(
                 None,
                 crate::utils::merge_and_dedup_vecs(binaries, bins),
-                quiet,
+                arg.globals.quiet,
             ),
             Command::Nuke => HoistRegistry::nuke(false),
         },
