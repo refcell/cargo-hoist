@@ -148,6 +148,9 @@ impl Project {
     #[instrument(skip(target))]
     pub fn extract_binaries(target: &Path) -> Result<Vec<PathBuf>> {
         let mut binaries = vec![];
+        if !target.exists() {
+            return Ok(binaries);
+        }
         for entry in std::fs::read_dir(target)? {
             let Ok(e) = entry else {
                 tracing::warn!("Failed to read entry: {:?}", entry);
@@ -245,10 +248,7 @@ mod tests {
         let tempdir = tempfile::tempdir().unwrap();
         let test_dir = setup_test(&tempdir, "test_extract_missing_target");
         let target = test_dir.join("target/release");
-        assert_eq!(
-            Project::extract_binaries(&target).unwrap_err().to_string(),
-            std::io::Error::from_raw_os_error(2).to_string()
-        );
+        assert!(Project::extract_binaries(&target).unwrap().is_empty());
     }
 
     #[test]
