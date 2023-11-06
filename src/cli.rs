@@ -31,7 +31,7 @@ pub struct GlobalOpts {
     #[arg(long, short, action = ArgAction::Count, default_value = "0")]
     pub verbosity: u8,
 
-    /// Suppress all stdout.
+    /// Suppresses standard output.
     #[arg(long, short)]
     pub quiet: bool,
 }
@@ -80,7 +80,7 @@ pub fn run() -> Result<()> {
 
     HoistRegistry::create_pre_hook(true, false)?;
 
-    match arg.command {
+    let res = match arg.command {
         None => HoistRegistry::install(None, Vec::new(), arg.globals.quiet),
         Some(c) => match c {
             Command::Hoist { binaries, bins } => HoistRegistry::hoist(
@@ -96,7 +96,14 @@ pub fn run() -> Result<()> {
             ),
             Command::Nuke => HoistRegistry::nuke(false),
         },
+    };
+    if let Err(e) = res {
+        if !arg.globals.quiet {
+            eprintln!("Error: {e:?}");
+        }
+        std::process::exit(1);
     }
+    Ok(())
 }
 
 #[cfg(test)]

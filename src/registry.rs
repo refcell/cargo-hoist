@@ -33,7 +33,6 @@ impl HoistRegistry {
     #[instrument(skip(self, binary))]
     pub fn insert(&mut self, binary: HoistedBinary) {
         if !self.binaries.contains(&binary) {
-            tracing::debug!("Binary not found in registry. Inserting.");
             self.binaries.insert(binary);
         }
     }
@@ -152,8 +151,10 @@ impl HoistRegistry {
         let mut p = match crate::project::Project::try_from(pdir) {
             Ok(p) => p,
             Err(e) => {
-                tracing::warn!("Failed to load project: {}", e);
-                crate::project::Project::from_current_dir()?
+                if !quiet {
+                    tracing::warn!("Failed to load project: {}", e);
+                }
+                return Ok(());
             }
         };
         let hoisted = if binaries.is_empty() {
