@@ -211,6 +211,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_from_none_pathbuf() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test(&tempdir, "test_from_none_pathbuf");
         let project = Project::try_from(None::<PathBuf>).unwrap();
         assert_eq!(project.root, std::env::current_dir().unwrap());
     }
@@ -218,6 +220,8 @@ mod tests {
     #[test]
     #[serial]
     fn test_from_none_path() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let _ = setup_test(&tempdir, "test_from_none_path");
         let project = Project::try_from(None::<&Path>).unwrap();
         assert_eq!(project.root, std::env::current_dir().unwrap());
     }
