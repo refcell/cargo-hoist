@@ -4,6 +4,9 @@
 
 use anyhow::Result;
 use inquire::Confirm;
+use inquire::{
+    formatter::MultiOptionFormatter, list_option::ListOption, validator::Validation, MultiSelect,
+};
 use is_terminal::IsTerminal;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
@@ -254,9 +257,57 @@ impl HoistRegistry {
             });
         }
 
-        registered
+        // If the user provided no binaries, use an inquire select to prompt
+        // the user to select which binaries to hoist.
+        let mut selected;
+        if binaries.is_empty() {
+            selected = HoistRegistry::multiselect_registered(&registered, quiet)?;
+        }
+        // If no tty, hoist all binaries, including redundant ones.
+        else if !std::io::stdout().is_terminal() {
+            selected = registered
+                .into_iter()
+                .filter(|b| binaries.contains(&b.name))
+                .collect();
+        }
+        // Otherwise, we want to convert the binaries to a set of de-duplicated hoisted binaries.
+        else {
+            let found: Vec<_> = registered
+                .into_iter()
+                .filter(|b| binaries.contains(&b.name))
+                .collect();
+            // Get the non-duplicate binaries from the found binaries.
+            let non_duplicate = found
+                .iter()
+                .filter(|b| {
+                    found
+                        .iter()
+                        .filter(|b2| b2.name == b.name)
+                        .collect::<Vec<_>>()
+                        .len()
+                        == 1
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+
+            HoistRegistry::print_color(
+                &format!(
+                    "Found {} conflicting registered binaries, opening a multiselect prompt to select which binaries to hoist.",
+                    found.len()
+                ),
+                Color::Yellow,
+                true,
+            )?;
+            selected = HoistRegistry::multiselect_registered(
+                &HashSet::from_iter(found.into_iter()),
+                quiet,
+            )?;
+            // Extend the selected binaries with the non-duplicate binaries.
+            selected.extend(non_duplicate);
+        }
+
+        selected
             .iter()
-            .filter(|b| binaries.contains(&b.name))
             .try_for_each(|b| match b.copy_to_current_dir() {
                 Ok(_) => {
                     if !quiet {
@@ -266,9 +317,67 @@ impl HoistRegistry {
                     Ok(())
                 }
                 Err(e) => Err(e),
-            })?;
+            })
+    }
 
-        Ok(())
+    /// Prompts the user for a list of hoisted binaries with a [MultiSelect].
+    #[instrument(skip(registered, quiet))]
+    pub fn multiselect_registered(
+        registered: &HashSet<HoistedBinary>,
+        quiet: bool,
+    ) -> Result<Vec<HoistedBinary>> {
+        let options = registered
+            .iter()
+            .map(|b| format!("{} ({})", b.name, b.location.display()))
+            .collect();
+        let validator = move |a: &[ListOption<&String>]| {
+            if !quiet {
+                tracing::debug!("Received binary input selection: {:?}", a);
+            }
+            Ok(Validation::Valid)
+        };
+        let formatter: MultiOptionFormatter<'_, String> =
+            &|a| format!("{} different bins", a.len());
+        match MultiSelect::new("Which binaries would you like to hoist?", options)
+            .with_validator(validator)
+            .with_formatter(formatter)
+            .prompt()
+        {
+            Ok(choices) => {
+                // The maximum hoisted binary size is how many binaries are registered.
+                let mut res = Vec::with_capacity(choices.len());
+                for c in choices {
+                    let mut split = c.split_whitespace();
+                    let name = split.next().ok_or(anyhow::anyhow!(
+                        "Failed to parse selected binary name: {}",
+                        c
+                    ))?;
+                    let location = split.next().ok_or(anyhow::anyhow!(
+                        "Failed to parse selected binary location: {}",
+                        c
+                    ))?;
+                    let location = location
+                        .trim_start_matches('(')
+                        .trim_end_matches(')')
+                        .to_string();
+                    res.push(HoistedBinary::new(
+                        name.to_string(),
+                        PathBuf::from(location),
+                    ));
+                }
+                Ok(res)
+            }
+            Err(e) => {
+                if !quiet {
+                    HoistRegistry::print_color(
+                        "Failed to hoist selected binary",
+                        Color::Red,
+                        true,
+                    )?;
+                }
+                Err(e.into())
+            }
+        }
     }
 }
 
