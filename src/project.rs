@@ -145,7 +145,7 @@ impl Project {
     #[instrument(skip(target))]
     pub fn extract_binaries(target: &Path) -> Result<Vec<PathBuf>> {
         let mut binaries = vec![];
-        if !target.exists() {
+        if !target.exists() || !target.is_dir() {
             return Ok(binaries);
         }
         for entry in std::fs::read_dir(target)? {
@@ -218,6 +218,22 @@ mod tests {
         let _ = setup_test(&tempdir, "test_from_none_path");
         let project = Project::try_from(None::<&Path>).unwrap();
         assert_eq!(project.root, std::env::current_dir().unwrap());
+    }
+
+    #[test]
+    #[serial]
+    fn test_extract_binaries_from_non_dir() {
+        let tempdir = tempfile::tempdir().unwrap();
+        let test_dir = setup_test(&tempdir, "test_extract_binaries_from_non_dir");
+        let bin1_path = test_dir.join("binary1");
+        let opts = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .mode(0o755)
+            .open(&bin1_path)
+            .unwrap();
+        opts.sync_all().unwrap();
+        assert!(Project::extract_binaries(&bin1_path).unwrap().is_empty());
     }
 
     #[test]
